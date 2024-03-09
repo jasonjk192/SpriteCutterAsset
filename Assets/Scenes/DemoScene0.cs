@@ -18,6 +18,8 @@ namespace WinterCrestal.SpriteCutter
         [Space, Header("Debug")]
         [SerializeField] private SpriteRenderer _testSpriteRenderer;
         [SerializeField] private bool allowInput = true;
+        [SerializeField] private bool allowPhysics = true;
+        [SerializeField] private bool generatePiecesInPlace = true;
         private TestCutType _cutType;
         private Vector2Int p1;
         private Vector2Int p2;
@@ -45,10 +47,10 @@ namespace WinterCrestal.SpriteCutter
 
         void Update()
         {
-            var pos = _testSpriteRenderer.transform.position;
+            /*var pos = _testSpriteRenderer.transform.position;
             pos.x = Mathf.Sin(Time.time);
             _testSpriteRenderer.transform.position = pos;
-            _testSpriteRenderer.transform.Rotate(0, 0, Time.deltaTime * 30f);
+            _testSpriteRenderer.transform.Rotate(0, 0, Time.deltaTime * 30f);*/
 
             if (Input.GetKeyDown(KeyCode.S))
             {
@@ -58,7 +60,7 @@ namespace WinterCrestal.SpriteCutter
 
         protected override void OnInputPointerDown(Vector3 position)
         {
-            if(!allowInput) return;
+            if (!allowInput) return;
             Vector2 worldPos = Camera.main.ScreenToWorldPoint(position);
             _lineEndPoint0.transform.position = worldPos;
             _lineEndPoint1.transform.position = worldPos;
@@ -85,15 +87,24 @@ namespace WinterCrestal.SpriteCutter
             _lineEndPoint1.transform.position = worldPos;
             _lineRenderer.SetPosition(1, worldPos);
         }
-        protected override void OnSpriteRendererCut(SpriteRenderer original, SpriteCutterInputManager.SplitSprite s0, SpriteCutterInputManager.SplitSprite s1)
-        {  
+        protected override void OnSpriteRendererCut(SpriteRenderer original, SplitSprite s0, SplitSprite s1)
+        {
             base.OnSpriteRendererCut(original, s0, s1);
+
+            if (!generatePiecesInPlace)
+            {
+                s0.SpriteRenderer.transform.position = Vector3.left;
+                s1.SpriteRenderer.transform.position = Vector3.right;
+            }
 
             _testSpriteRenderer.gameObject.SetActive(false);
             StartCoroutine(ShowDelayed());
 
-            AddPhysics(s0.SpriteRenderer);
-            AddPhysics(s1.SpriteRenderer);
+            if(allowPhysics)
+            {
+                AddPhysics(s0.SpriteRenderer);
+                AddPhysics(s1.SpriteRenderer);
+            }
         }
 
         private void AddPhysics(SpriteRenderer renderer)
@@ -287,8 +298,11 @@ namespace WinterCrestal.SpriteCutter
             if (_splitSprite1.SpriteRenderer != null) { Destroy(_splitSprite1.SpriteRenderer.gameObject); _splitSprite1.SpriteRenderer = null; _splitSprite1.Rect = default; }
 
 
-            if (_testSpriteRenderer.sprite.CutSprite(p1, p2, out _splitSprite0.SpriteRenderer, out _splitSprite1.SpriteRenderer, out _splitSprite0.Rect, out _splitSprite1.Rect))
+            if (_testSpriteRenderer.CutSprite(p1, p2, out _splitSprite0.SpriteRenderer, out _splitSprite1.SpriteRenderer))
             {
+                _splitSprite0.Rect = new(0, 0, _splitSprite0.SpriteRenderer.sprite.texture.width, _splitSprite0.SpriteRenderer.sprite.texture.height);
+                _splitSprite1.Rect = new(p1.x < p2.x ? p1.x : p2.x, p1.y < p2.y ? p1.y : p2.y, _splitSprite1.SpriteRenderer.sprite.texture.width, _splitSprite1.SpriteRenderer.sprite.texture.height);
+
                 OnSpriteRendererCut(_testSpriteRenderer, _splitSprite0, _splitSprite1);
             }
         }
@@ -299,25 +313,39 @@ namespace WinterCrestal.SpriteCutter
         {
             GUILayout.BeginVertical();
             showDropdown = ExtendedGUIUtils.Dropdown(_cutType.ToString(), showDropdown, ref _cutType, out bool hasChosen);
-            if(hasChosen)
+            if (hasChosen)
             {
                 ChooseCutType();
             }
 
-            if(!showDropdown)
+            if (!showDropdown)
             {
                 GUILayout.BeginHorizontal();
                 GUILayout.Label("Point 0: ");
-                GUILayout.TextField(p1.x.ToString());
-                GUILayout.Label("x");
-                GUILayout.TextField(p1.y.ToString());
+                if(_cutType == TestCutType.CUSTOM)
+                {
+                    p1.x = int.Parse(GUILayout.TextField(p1.x.ToString()));
+                    GUILayout.Label("x");
+                    p1.y = int.Parse(GUILayout.TextField(p1.y.ToString()));
+                }
+                else
+                {
+                    GUILayout.Label(p1.x + "x" + p1.y);
+                }
                 GUILayout.EndHorizontal();
 
                 GUILayout.BeginHorizontal();
                 GUILayout.Label("Point 1: ");
-                GUILayout.TextField(p2.x.ToString());
-                GUILayout.Label("x");
-                GUILayout.TextField(p2.y.ToString());
+                if(_cutType == TestCutType.CUSTOM)
+                {
+                    p2.x = int.Parse(GUILayout.TextField(p2.x.ToString()));
+                    GUILayout.Label("x");
+                    p2.y = int.Parse(GUILayout.TextField(p2.y.ToString()));
+                }
+                else
+                {
+                    GUILayout.Label(p2.x + "x" + p2.y);
+                }
                 GUILayout.EndHorizontal();
             }
 

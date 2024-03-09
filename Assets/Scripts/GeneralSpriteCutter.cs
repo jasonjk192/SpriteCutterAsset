@@ -32,7 +32,7 @@ namespace WinterCrestal.SpriteCutter
             _spriteCutterInputManager.SpriteRenderersToCut = spriteRenderers.ToArray();
         }
 
-        protected override void OnSpriteRendererCut(SpriteRenderer original, SpriteCutterInputManager.SplitSprite s0, SpriteCutterInputManager.SplitSprite s1)
+        protected override void OnSpriteRendererCut(SpriteRenderer original, SplitSprite s0, SplitSprite s1)
         {
             base.OnSpriteRendererCut(original, s0, s1);
 

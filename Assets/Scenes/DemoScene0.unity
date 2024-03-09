@@ -484,14 +484,14 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 719734891}
-  m_LocalRotation: {x: 0, y: 0, z: 0.43507394, w: 0.90039474}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: -3, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 2
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 51.58}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!61 &719734894
 BoxCollider2D:
   m_ObjectHideFlags: 0
@@ -611,8 +611,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 2093024235}
-  - component: {fileID: 2093024234}
-  - component: {fileID: 2093024237}
+  - component: {fileID: 2093024239}
+  - component: {fileID: 2093024238}
   - component: {fileID: 2093024236}
   m_Layer: 0
   m_Name: Manager
@@ -621,21 +621,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &2093024234
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2093024233}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 2c0a38e05a9513644ac9ee8d3312cd58, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _spriteCutterInputManager: {fileID: 2093024237}
-  _testSpriteRenderer: {fileID: 719734892}
-  allowInput: 1
 --- !u!4 &2093024235
 Transform:
   m_ObjectHideFlags: 0
@@ -752,7 +737,7 @@ LineRenderer:
     generateLightingData: 0
   m_UseWorldSpace: 1
   m_Loop: 0
---- !u!114 &2093024237
+--- !u!114 &2093024238
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -761,7 +746,24 @@ MonoBehaviour:
   m_GameObject: {fileID: 2093024233}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 779551cd280069e458b321103b3ed111, type: 3}
+  m_Script: {fileID: 11500000, guid: 92f630bbbb4db14449bcd8356882d837, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _spriteCutterInputManager: {fileID: 2093024239}
+  _testSpriteRenderer: {fileID: 719734892}
+  allowInput: 1
+  allowPhysics: 0
+  generatePiecesInPlace: 1
+--- !u!114 &2093024239
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2093024233}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e53c8048b78c16d4389eddd324099d03, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   SpriteRenderersToCut: []

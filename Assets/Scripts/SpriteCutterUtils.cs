@@ -3,6 +3,45 @@ using UnityEngine;
 
 namespace WinterCrestal.SpriteCutter
 {
+    internal struct CutInfo
+    {
+        public Vector2Int p0;
+        public Vector2Int p1;
+        public int xMin, xMax;
+        public int yMin, yMax;
+        public bool isCorner;
+        public CutInfo(Vector2Int _p0, Vector2Int _p1, int texWidth, int texHeight)
+        {
+            p0 = _p0;
+            p1 = _p1;
+            if (p0.x < p1.x) { xMin = p0.x; xMax = p1.x; }
+            else { xMin = p1.x; xMax = p0.x; }
+            if (p0.y < p1.y) { yMin = p0.y; yMax = p1.y; }
+            else { yMin = p1.y; yMax = p0.y; }
+
+            isCorner = false;
+            if (xMin == 0 && xMax < texWidth && (yMin > 0 || yMax < texHeight))
+                isCorner = true;
+            else if (xMax == texWidth && xMin > 0 && (yMin > 0 || yMax < texHeight))
+                isCorner = true;
+        }
+
+        public override readonly string ToString()
+        {
+            return base.ToString() + "\nMin: (" + xMin + ", " + yMin + ")\nMax: (" + xMax + ", " + yMax + ")\nCorner: " + isCorner;
+        }
+    }
+
+    public static class ColorExtensions
+    {
+        public static Color32 SetFade(this Color32 c, byte fade)
+        {
+            c.a = fade;
+            return c;
+        }
+    }
+
+
     public static class SpriteCutterUtils
     {
 
@@ -65,265 +104,52 @@ namespace WinterCrestal.SpriteCutter
             return 0;
         }
 
-        public static bool CutSprite(this Sprite sprite, Vector2Int p1, Vector2Int p2, out SpriteRenderer sp1, out SpriteRenderer sp2, out Rect r1, out Rect r2)
+        public static bool CutSprite(this SpriteRenderer spriteRenderer, Vector2Int point0, Vector2Int point1, out SpriteRenderer s0, out SpriteRenderer s1)
         {
-            sp1 = null; sp2 = null;
-            if (!DivideRectangle(sprite.rect, p1, p2, out r1, out r2) ||
-                r1.width == 0 || r1.height == 0 || r2.width == 0 || r2.height == 0)
-                return false;
+            var texture = spriteRenderer.sprite.texture;
+            CutInfo cutInfo = new(point0, point1, texture.width, texture.height);
 
-            var tex1 = GenerateNewTextureFragment(sprite.texture, r1);
-            var tex2 = GenerateNewTextureFragment(sprite.texture, r2);
-
-            float xMin = Mathf.Min(p1.x, p2.x);
-            float xMax = Mathf.Max(p1.x, p2.x);
-            float yMin = Mathf.Min(p1.y, p2.y);
-            float yMax = Mathf.Max(p1.y, p2.y);
-            float h = yMax - yMin;
-            float w = xMax - xMin;
-            float m = h / w;
-            float altM = (p2.y - p1.y) / (float)(p2.x - p1.x);
-            bool invSlope = Mathf.Sign(m) != Mathf.Sign(altM);
-
-            if (CheckPointsOppositeVertical(sprite.rect, p1, p2))
+            if (DivideTexture(texture, cutInfo, out var tex0, out var tex1))
             {
-                if (invSlope)
+                if (cutInfo.isCorner)
                 {
-                    Color[] pxl1 = tex1.GetPixels((int)xMin, (int)yMin, (int)w, (int)h);
-                    for (int y = 0; y < h; y++)
-                    {
-                        for (int x = 0; x < (int)(y / m); x++)
-                            pxl1[y * (int)w + ((int)w - x - 1)] = Color.clear;
-                    }
-                    tex1.SetPixels((int)xMin, (int)yMin, (int)w, (int)h, pxl1);
-                    tex1.Apply();
+                    int diffY = cutInfo.p1.y - cutInfo.p0.y;
+                    int diffX = cutInfo.p1.x - cutInfo.p0.x;
+                    float m = diffY / (float)diffX;
 
-                    Color[] pxl2 = tex2.GetPixels(0, 0, (int)w, (int)h);
-                    for (int y = 0; y < h; y++)
-                    {
-                        for (int x = (int)(y / m); x < w; x++)
-                            pxl2[y * (int)w + ((int)w - x - 1)] = Color.clear;
-                    }
-                    tex2.SetPixels(0, 0, (int)w, (int)h, pxl2);
-                    tex2.Apply();
-                }
+                    bool b = false;
+                    if (cutInfo.xMin == 0 && cutInfo.yMin == 0) b = true;
+                    else if (cutInfo.xMin == 0 && cutInfo.yMax == texture.height) b = m >= 1;
+                    else if (cutInfo.xMax == texture.width && cutInfo.yMin == 0) b = m < 1;
+                    else if (cutInfo.xMax == texture.width && cutInfo.yMax == texture.height) b = false;
 
-                else
-                {
-                    Color[] pxl1 = tex1.GetPixels((int)xMin, (int)yMin, (int)w, (int)h);
-                    for (int y = 0; y < h; y++)
-                    {
-                        for (int x = (int)(y / m); x < w; x++)
-                            pxl1[y * (int)w + x] = Color.clear;
-                    }
-                    tex1.SetPixels((int)xMin, (int)yMin, (int)w, (int)h, pxl1);
-                    tex1.Apply();
-
-                    Color[] pxl2 = tex2.GetPixels(0, 0, (int)w, (int)h);
-                    for (int y = 0; y < h; y++)
-                    {
-                        for (int x = 0; x < (int)(y / m); x++)
-                            pxl2[y * (int)w + x] = Color.clear;
-                    }
-                    tex2.SetPixels(0, 0, (int)w, (int)h, pxl2);
-                    tex2.Apply();
-                }
-
-
-            }
-
-            else if (CheckPointsOppositeHorizontal(sprite.rect, p1, p2))
-            {
-                if (invSlope)
-                {
-                    Color[] pxl1 = tex1.GetPixels((int)xMin, (int)yMin, (int)w, (int)h);
-                    for (int y = 0; y < h; y++)
-                    {
-                        for (int x = 0; x < (int)(y / m); x++)
-                            pxl1[y * (int)w + ((int)w - x - 1)] = Color.clear;
-                    }
-                    tex1.SetPixels((int)xMin, (int)yMin, (int)w, (int)h, pxl1);
-                    tex1.Apply();
-
-                    Color[] pxl2 = tex2.GetPixels(0, 0, (int)w, (int)h);
-                    for (int y = 0; y < h; y++)
-                    {
-                        for (int x = (int)(y / m); x < w; x++)
-                            pxl2[y * (int)w + ((int)w - x - 1)] = Color.clear;
-                    }
-                    tex2.SetPixels(0, 0, (int)w, (int)h, pxl2);
-                    tex2.Apply();
+                    Vector2Int offset = new(cutInfo.xMin, cutInfo.yMin);
+                    CutInfo tempCutInfo = new(cutInfo.p0 - offset, cutInfo.p1 - offset, tex1.width, tex1.height);
+                    CutTexture(tex0, tempCutInfo, !b);
+                    CutTexture(tex1, cutInfo, b);
                 }
                 else
                 {
-                    Color[] pxl1 = tex1.GetPixels((int)xMin, (int)yMin, (int)w, (int)h);
-                    for (int y = 0; y < h; y++)
-                    {
-                        for (int x = 0; x < (int)(y / m); x++)
-                            pxl1[y * (int)w + x] = Color.clear;
-                    }
-                    tex1.SetPixels((int)xMin, (int)yMin, (int)w, (int)h, pxl1);
-                    tex1.Apply();
-
-                    Color[] pxl2 = tex2.GetPixels(0, 0, (int)w, (int)h);
-                    for (int y = 0; y < h; y++)
-                    {
-                        for (int x = (int)(y / m); x < w; x++)
-                            pxl2[y * (int)w + x] = Color.clear;
-                    }
-                    tex2.SetPixels(0, 0, (int)w, (int)h, pxl2);
-                    tex2.Apply();
+                    CutTexture(tex0, cutInfo, false);
+                    Vector2Int offset = new(cutInfo.xMin, cutInfo.yMin);
+                    CutInfo tempCutInfo = new(cutInfo.p0 - offset, cutInfo.p1 - offset, tex1.width, tex1.height);
+                    CutTexture(tex1, tempCutInfo, true);
                 }
 
+                s0 = CreateSpriteRenderer(tex0, spriteRenderer.sprite.pixelsPerUnit);
+                s1 = CreateSpriteRenderer(tex1, spriteRenderer.sprite.pixelsPerUnit);
+                return true;
             }
 
-            else
-            {
-                if (invSlope)
-                {
-                    if (r1.x == 0)
-                    {
-                        Color[] pxl1 = tex1.GetPixels(0, 0, (int)w, (int)h);
-                        for (int y = 0; y < h; y++)
-                        {
-                            for (int x = 0; x < (int)(y / m); x++)
-                                pxl1[y * (int)w + ((int)w - x - 1)] = Color.clear;
-                        }
-                        tex1.SetPixels(0, 0, (int)w, (int)h, pxl1);
-                        tex1.Apply();
-
-                        Color[] pxl2 = tex2.GetPixels((int)xMin, (int)yMin, (int)w, (int)h);
-                        for (int y = 0; y < h; y++)
-                        {
-                            for (int x = (int)(y / m); x < w; x++)
-                                pxl2[y * (int)w + ((int)w - x - 1)] = Color.clear;
-                        }
-                        tex2.SetPixels((int)xMin, (int)yMin, (int)w, (int)h, pxl2);
-                        tex2.Apply();
-                    }
-
-                    else
-                    {
-                        Color[] pxl1 = tex1.GetPixels(0, 0, (int)w, (int)h);
-                        for (int y = 0; y < h; y++)
-                        {
-                            for (int x = (int)(y / m); x < w; x++)
-                                pxl1[y * (int)w + ((int)w - x - 1)] = Color.clear;
-                        }
-                        tex1.SetPixels(0, 0, (int)w, (int)h, pxl1);
-                        tex1.Apply();
-
-                        Color[] pxl2 = tex2.GetPixels((int)xMin, (int)yMin, (int)w, (int)h);
-                        for (int y = 0; y < h; y++)
-                        {
-                            for (int x = 0; x < (int)(y / m); x++)
-                                pxl2[y * (int)w + ((int)w - x - 1)] = Color.clear;
-                        }
-                        tex2.SetPixels((int)xMin, (int)yMin, (int)w, (int)h, pxl2);
-                        tex2.Apply();
-                    }
-
-
-                }
-                else
-                {
-                    if (p1.x > p2.x) (p2, p1) = (p1, p2);
-                    if (p1.x == 0)
-                    {
-                        Color[] pxl1 = tex1.GetPixels(0, 0, (int)w, (int)h);
-                        for (int y = 0; y < h; y++)
-                        {
-                            for (int x = (int)(y / m); x < w; x++)
-                            {
-                                pxl1[y * (int)w + x] = Color.clear;
-                            }
-                        }
-                        tex1.SetPixels(0, 0, (int)w, (int)h, pxl1);
-                        tex1.Apply();
-
-                        Color[] pxl2 = tex2.GetPixels((int)xMin, (int)yMin, (int)w, (int)h);
-                        for (int y = 0; y < h; y++)
-                        {
-                            for (int x = 0; x < (int)(y / m); x++)
-                                pxl2[y * (int)w + x] = Color.clear;
-                        }
-                        tex2.SetPixels((int)xMin, (int)yMin, (int)w, (int)h, pxl2);
-                        tex2.Apply();
-                    }
-
-                    else
-                    {
-                        Color[] pxl1 = tex1.GetPixels(0, 0, (int)w, (int)h);
-                        for (int y = 0; y < h; y++)
-                        {
-                            for (int x = 0; x < (int)(y / m); x++)
-                            {
-                                pxl1[y * (int)w + x] = Color.clear;
-                            }
-                        }
-                        tex1.SetPixels(0, 0, (int)w, (int)h, pxl1);
-                        tex1.Apply();
-
-                        Color[] pxl2 = tex2.GetPixels((int)xMin, (int)yMin, (int)w, (int)h);
-                        for (int y = 0; y < h; y++)
-                        {
-                            for (int x = (int)(y / m); x < w; x++)
-                                pxl2[y * (int)w + x] = Color.clear;
-                        }
-                        tex2.SetPixels((int)xMin, (int)yMin, (int)w, (int)h, pxl2);
-                        tex2.Apply();
-                    }
-
-                }
-
-
-            }
-
-            GameObject n1 = new(sprite.name + "_0");
-            sp1 = n1.AddComponent<SpriteRenderer>();
-            sp1.sprite = Sprite.Create(tex1, new Rect(0, 0, tex1.width, tex1.height), new Vector2(.5f, .5f), sprite.pixelsPerUnit);
-
-            GameObject n2 = new(sprite.name + "_1");
-            sp2 = n2.AddComponent<SpriteRenderer>();
-            sp2.sprite = Sprite.Create(tex2, new Rect(0, 0, tex2.width, tex2.height), new Vector2(.5f, .5f), sprite.pixelsPerUnit);
-            return true;
+            s0 = null;
+            s1 = null;
+            return false;
         }
+
 
         #endregion
 
         #region PRIVATE_FUNCTIONS
-        private static Texture2D GenerateNewTextureFragment(Texture2D texture, RectInt rect)
-        {
-            Texture2D partialTex2D = new(rect.width, rect.height);
-            var pixels = texture.GetPixels(rect.x, rect.y, rect.width, rect.height);
-            partialTex2D.SetPixels(pixels);
-            partialTex2D.Apply();
-
-            return partialTex2D;
-        }
-
-        private static Texture2D GenerateNewTextureFragment(Texture2D texture, Rect rect)
-        {
-            RectInt r = new((int)rect.x, (int)rect.y, (int)rect.width, (int)rect.height);
-            return GenerateNewTextureFragment(texture, r);
-        }
-
-        private static bool CheckPointsOppositeVertical(Rect rect, Vector2 p1,  Vector2 p2)
-        {
-            return ((p1.y == 0 && p2.y == rect.height) || (p1.y == rect.height && p2.y == 0));
-        }
-
-        private static bool CheckPointsOppositeHorizontal(Rect rect, Vector2 p1, Vector2 p2)
-        {
-            return ((p1.x == 0 && p2.x == rect.width) || (p1.x == rect.width && p2.x == 0));
-        }
-
-        private static bool ReturnEmptyRects(out Rect r1, out Rect r2)
-        {
-            r1 = new();
-            r2 = new();
-            return false;
-        }
 
         private static bool GetLineLineIntersection(Vector2 A, Vector2 B, Vector2 C, Vector2 D, out Vector2 hit)
         {
@@ -343,82 +169,129 @@ namespace WinterCrestal.SpriteCutter
             return false;
         }
 
-        private static bool DivideRectangle(Rect rect, Vector2 p1,  Vector2 p2, out Rect rect1, out Rect rect2)
+        private static bool DivideTexture(this Texture2D tex2D, CutInfo cutInfo, out Texture2D newTex2D0, out Texture2D newTex2D1)
         {
-            if(p1.x == p2.x)
+            newTex2D0 = null;
+            newTex2D1 = null;
+
+            int xMin = cutInfo.xMin;
+            int xMax = cutInfo.xMax;
+            int yMin = cutInfo.yMin;
+            int yMax = cutInfo.yMax;
+
+            if (xMin < 0 || yMin < 0 || xMax > tex2D.width || yMax > tex2D.height ||
+                xMin >= tex2D.width || xMax <= 0 || yMin >= tex2D.height || yMax <= 0)
+                return false;
+
+            if (xMin == xMax)
             {
-                float yMin = Mathf.Min(p1.y, p2.y);
-                float yMax = Mathf.Max(p1.y, p2.y);
-                if(yMin != 0 || yMax != rect.height)
-                    return ReturnEmptyRects(out rect1, out rect2);
-                else
-                {
-                    rect1 = new Rect(rect.x, rect.y, p1.x, rect.height);
-                    rect2 = new Rect(rect.x + p1.x, rect.y, rect.width - p1.x, rect.height);
-                    return true;
-                }
+                if (yMin != 0 || yMax != tex2D.height)
+                    return false;
+            }
+            if (yMin == yMax)
+            {
+                if (xMin != 0 || xMax != tex2D.width)
+                    return false;
             }
 
-            else if(p1.y == p2.y)
+            if (cutInfo.isCorner)
             {
-                float xMin = Mathf.Min(p1.x, p2.x);
-                float xMax = Mathf.Max(p1.x, p2.x);
-                if (xMin != 0 || xMax != rect.width)
-                    return ReturnEmptyRects(out rect1, out rect2);
-                else
-                {
-                    rect1 = new Rect(rect.x, rect.y, rect.width, p1.y);
-                    rect2 = new Rect(rect.x, rect.y + p1.y, rect.width, rect.height - p1.y);
-                    return true;
-                }
-            }
+                newTex2D0 = new Texture2D(xMax - xMin, yMax - yMin, tex2D.format, false);
+                newTex2D1 = new Texture2D(tex2D.width, tex2D.height, tex2D.format, false);
 
-            if (CheckPointsOppositeVertical(rect, p1, p2))
-            {
-                if (p1.x > p2.x) (p2, p1) = (p1, p2);
-                rect1 = new Rect(rect.x, rect.y, p2.x, rect.height);
-                rect2 = new Rect(rect.x + p1.x, rect.y, rect.width - p1.x, rect.height);
-                return true;
+                Graphics.CopyTexture(tex2D, 0, 0, xMin, yMin, newTex2D0.width, newTex2D0.height, newTex2D0, 0, 0, 0, 0);
+                Graphics.CopyTexture(tex2D, 0, 0, 0, 0, newTex2D1.width, newTex2D1.height, newTex2D1, 0, 0, 0, 0);
             }
-
-            else if (CheckPointsOppositeHorizontal(rect, p1, p2))
-            {
-                if (p1.y > p2.y) (p2, p1) = (p1, p2);
-                rect1 = new Rect(rect.x, rect.y, rect.width, p2.y);
-                rect2 = new Rect(rect.x, rect.y + p1.y, rect.width, rect.height - p1.y);
-                return true;
-            }
-
             else
             {
-                float xMin = Mathf.Min(p1.x, p2.x);
-                float xMax = Mathf.Max(p1.x, p2.x);
-                float yMin = Mathf.Min(p1.y, p2.y);
-                float yMax = Mathf.Max(p1.y, p2.y);
+                newTex2D0 = new Texture2D(xMax, yMax, tex2D.format, false);
+                newTex2D1 = new Texture2D(tex2D.width - xMin, tex2D.height - yMin, tex2D.format, false);
 
-                if(xMin == 0)
+                Graphics.CopyTexture(tex2D, 0, 0, 0, 0, newTex2D0.width, newTex2D0.height, newTex2D0, 0, 0, 0, 0);
+                Graphics.CopyTexture(tex2D, 0, 0, xMin, yMin, newTex2D1.width, newTex2D1.height, newTex2D1, 0, 0, 0, 0);
+            }
+            return true;
+        }
+
+        private static void CutTexture(this Texture2D tex2D, CutInfo cutInfo, bool inverted = false, int pixelDifferenceTolerance = 1)
+        {
+            int diffY = cutInfo.p1.y - cutInfo.p0.y;
+            int diffX = cutInfo.p1.x - cutInfo.p0.x;
+            if (Mathf.Abs(diffY) <= pixelDifferenceTolerance || Mathf.Abs(diffX) <= pixelDifferenceTolerance)
+                return;
+
+            float m = diffY / (float)diffX;
+            float b = cutInfo.p0.y - m * cutInfo.p0.x;
+            var pixels = tex2D.GetPixelData<Color32>(0);
+
+            if (m > 0)
+            {
+                if (m < 1) inverted = !inverted;
+                if (inverted)
                 {
-                    if(yMin != 0 && yMax != rect.height)
-                        return ReturnEmptyRects(out rect1, out rect2);
-                }
-                else if(xMax == rect.width)
-                {
-                    if (yMin != 0 && yMax != rect.height)
-                        return ReturnEmptyRects(out rect1, out rect2);
+                    for (int y = cutInfo.yMin; y < cutInfo.yMax; y++)
+                    {
+                        int xLimit = (int)((y - b) / m);
+                        for (int x = cutInfo.xMin; x < xLimit; x++)
+                        {
+                            int index = y * tex2D.width + x;
+                            pixels[index] = pixels[index].SetFade(0);
+                        }
+                    }
                 }
                 else
                 {
-                    return ReturnEmptyRects(out rect1, out rect2);
+                    for (int y = cutInfo.yMin; y < cutInfo.yMax; y++)
+                    {
+                        int xLimit = (int)((y - b) / m);
+                        for (int x = xLimit; x < cutInfo.xMax; x++)
+                        {
+                            int index = y * tex2D.width + x;
+                            pixels[index] = pixels[index].SetFade(0);
+                        }
+                    }
                 }
-
-                rect1 = new(rect.x + xMin, rect.y + yMin, xMax - xMin, yMax - yMin);
-                rect2 = new(rect);
-
-                return true;
             }
-            
+            else
+            {
+                if (inverted)
+                {
+                    for (int y = cutInfo.yMin; y < cutInfo.yMax; y++)
+                    {
+                        int xLimit = (int)((y - b) / m);
+                        for (int x = cutInfo.xMin; x < xLimit; x++)
+                        {
+                            int index = y * tex2D.width + x;
+                            pixels[index] = pixels[index].SetFade(0);
+                        }
+                    }
+                }
+                else
+                {
+                    for (int y = cutInfo.yMin; y < cutInfo.yMax; y++)
+                    {
+                        int xLimit = (int)((y - b) / m);
+                        for (int x = xLimit; x < cutInfo.xMax; x++)
+                        {
+                            int index = y * tex2D.width + x;
+                            pixels[index] = pixels[index].SetFade(0);
+                        }
+                    }
+                }
+            }
+
+            tex2D.SetPixelData(pixels, 0);
+            tex2D.Apply(true, true);
         }
-        
+
+        private static SpriteRenderer CreateSpriteRenderer(this Texture2D tex2D, float ppu = 100f)
+        {
+            GameObject go = new GameObject();
+            var renderer = go.AddComponent<SpriteRenderer>();
+            renderer.sprite = Sprite.Create(tex2D, new Rect(0, 0, tex2D.width, tex2D.height), new Vector2(.5f, .5f), ppu);
+            return renderer;
+        }
+
         #endregion
     }
 }

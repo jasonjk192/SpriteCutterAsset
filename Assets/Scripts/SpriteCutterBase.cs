@@ -1,5 +1,4 @@
 using UnityEngine;
-using static WinterCrestal.SpriteCutter.SpriteCutterInputManager;
 
 namespace WinterCrestal.SpriteCutter
 {
@@ -53,6 +52,5 @@ namespace WinterCrestal.SpriteCutter
         }
 
     }
-
 }
 

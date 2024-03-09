@@ -8,16 +8,16 @@ using ISTouch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 
 namespace WinterCrestal.SpriteCutter
 {
+    public struct SplitSprite
+    {
+        public SpriteRenderer SpriteRenderer;
+        public Rect Rect;
+        public SplitSprite(SpriteRenderer spriteRenderer, Rect rect)
+        { SpriteRenderer = spriteRenderer; Rect = rect; }
+    }
+
     public class SpriteCutterInputManager : MonoBehaviour
     {
-        public struct SplitSprite
-        {
-            public SpriteRenderer SpriteRenderer;
-            public Rect Rect;
-            public SplitSprite(SpriteRenderer spriteRenderer, Rect rect)
-            { SpriteRenderer = spriteRenderer; Rect = rect; }
-        }
-
         [HideInInspector] public SpriteRenderer[] SpriteRenderersToCut;
         [HideInInspector] public Camera Camera;
         private float _spriteCuttingTolerance = .2f;
@@ -122,9 +122,14 @@ namespace WinterCrestal.SpriteCutter
                     cut0 = CheckCutTolerance(renderer, cut0, _spriteCuttingTolerance);
                     cut1 = CheckCutTolerance(renderer, cut1, _spriteCuttingTolerance);
 
-                    if (renderer.sprite.CutSprite(cut0, cut1, out var _cutSpriteRenderer0, out var _cutSpriteRenderer1, out var r0, out var r1))
+                    if (renderer.CutSprite(cut0, cut1, out var _cutSpriteRenderer0, out var _cutSpriteRenderer1))
                     {
-                        onSpriteRendererCut?.Invoke(renderer, new SplitSprite(_cutSpriteRenderer0, r0), new SplitSprite(_cutSpriteRenderer1, r1));
+                        float xMin = Mathf.Min(cut0.x, cut1.x);
+                        float yMin = Mathf.Min(cut0.y, cut1.y);
+
+                        onSpriteRendererCut?.Invoke(renderer, 
+                            new(_cutSpriteRenderer0, new Rect(0, 0, _cutSpriteRenderer0.sprite.texture.width, _cutSpriteRenderer0.sprite.texture.height)), 
+                            new(_cutSpriteRenderer1, new Rect(xMin, yMin, _cutSpriteRenderer1.sprite.texture.width, _cutSpriteRenderer1.sprite.texture.height)));
                     }
                 }
             } 

@@ -412,6 +412,11 @@ Rigidbody2D:
   m_SleepingMode: 1
   m_CollisionDetection: 0
   m_Constraints: 0
+--- !u!1 &1249661047 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 8677698354291025015, guid: a87810f00ab0ec140b196ea50c28ae34, type: 3}
+  m_PrefabInstance: {fileID: 8677698354088976755}
+  m_PrefabAsset: {fileID: 0}
 --- !u!1 &1719223726
 GameObject:
   m_ObjectHideFlags: 0
@@ -421,8 +426,8 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1719223728}
-  - component: {fileID: 1719223727}
   - component: {fileID: 1719223729}
+  - component: {fileID: 1719223730}
   m_Layer: 0
   m_Name: DemoManager
   m_TagString: Untagged
@@ -430,19 +435,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1719223727
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1719223726}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 316da3707a22313468622b8f40f38c09, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _spriteCutterInputManager: {fileID: 2094445652}
 --- !u!4 &1719223728
 Transform:
   m_ObjectHideFlags: 0
@@ -557,17 +549,33 @@ LineRenderer:
     generateLightingData: 0
   m_UseWorldSpace: 1
   m_Loop: 0
---- !u!114 &2094445652 stripped
+--- !u!114 &1719223730
 MonoBehaviour:
-  m_CorrespondingSourceObject: {fileID: 8677698354291025012, guid: a87810f00ab0ec140b196ea50c28ae34, type: 3}
-  m_PrefabInstance: {fileID: 8677698354088976755}
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 0}
+  m_GameObject: {fileID: 1719223726}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 779551cd280069e458b321103b3ed111, type: 3}
+  m_Script: {fileID: 11500000, guid: 316da3707a22313468622b8f40f38c09, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  _spriteCutterInputManager: {fileID: 2094445655}
+--- !u!114 &2094445655
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1249661047}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e53c8048b78c16d4389eddd324099d03, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  SpriteRenderersToCut: []
+  Camera: {fileID: 0}
 --- !u!1001 &8677698354088976755
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -619,9 +627,14 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 8677698354291025014, guid: a87810f00ab0ec140b196ea50c28ae34, type: 3}
+      propertyPath: _spriteCutterInputManager
+      value: 
+      objectReference: {fileID: 2094445655}
     - target: {fileID: 8677698354291025015, guid: a87810f00ab0ec140b196ea50c28ae34, type: 3}
       propertyPath: m_Name
       value: SpriteCutterContainer
       objectReference: {fileID: 0}
-    m_RemovedComponents: []
+    m_RemovedComponents:
+    - {fileID: 8677698354291025012, guid: a87810f00ab0ec140b196ea50c28ae34, type: 3}
   m_SourcePrefab: {fileID: 100100000, guid: a87810f00ab0ec140b196ea50c28ae34, type: 3}
