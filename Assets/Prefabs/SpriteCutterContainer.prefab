@@ -10,7 +10,7 @@ GameObject:
   m_Component:
   - component: {fileID: 8677698354291025013}
   - component: {fileID: 8677698354291025014}
-  - component: {fileID: 8677698354291025012}
+  - component: {fileID: 7608001701764114714}
   m_Layer: 0
   m_Name: SpriteCutterContainer
   m_TagString: Untagged
@@ -45,8 +45,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 48cbcf6876b105c40a884c88f04be455, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  _spriteCutterInputManager: {fileID: 8677698354291025012}
---- !u!114 &8677698354291025012
+  _spriteCutterInputManager: {fileID: 7608001701764114714}
+--- !u!114 &7608001701764114714
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -55,7 +55,7 @@ MonoBehaviour:
   m_GameObject: {fileID: 8677698354291025015}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 779551cd280069e458b321103b3ed111, type: 3}
+  m_Script: {fileID: 11500000, guid: e53c8048b78c16d4389eddd324099d03, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   SpriteRenderersToCut: []

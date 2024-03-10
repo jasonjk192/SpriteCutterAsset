@@ -3,6 +3,20 @@ using UnityEngine;
 
 namespace WinterCrestal.SpriteCutter
 {
+    /// <summary>
+    /// Struct to hold the split sprite's info, Rect holds info for recreating the relative position of the new sprites
+    /// </summary>
+    public struct SplitSprite
+    {
+        public SpriteRenderer SpriteRenderer;
+        public Rect Rect;
+        public SplitSprite(SpriteRenderer spriteRenderer, Rect rect)
+        { SpriteRenderer = spriteRenderer; Rect = rect; }
+    }
+
+    /// <summary>
+    /// Creates relevant information from a pair of points (in sprite local space) and the texture dimensions
+    /// </summary>
     internal struct CutInfo
     {
         public Vector2Int p0;
@@ -34,6 +48,12 @@ namespace WinterCrestal.SpriteCutter
 
     public static class ColorExtensions
     {
+        /// <summary>
+        /// Extension to quickly set the alpha value of a Color32 variable
+        /// </summary>
+        /// <param name="c">The color to set the alpha</param>
+        /// <param name="fade">The alpha value</param>
+        /// <returns>The faded color</returns>
         public static Color32 SetFade(this Color32 c, byte fade)
         {
             c.a = fade;
@@ -41,40 +61,49 @@ namespace WinterCrestal.SpriteCutter
         }
     }
 
-
     public static class SpriteCutterUtils
     {
 
         #region PUBLIC_FUNCTIONS
+
+        /// <summary>
+        /// Converts a point in world space to sprite's local space
+        /// </summary>
+        /// <param name="renderer">The sprite renderer whose sprite is to be considered</param>
+        /// <param name="worldPoint">A point in world coordinates</param>
+        /// <returns>A point in sprite's local space</returns>
         public static Vector2Int WorldToSpriteLocal(this SpriteRenderer renderer, Vector2 worldPoint)
         {
-            Vector2 scale = renderer.transform.localScale;
-            float spriteLocalX = (worldPoint.x - renderer.transform.position.x) / scale.x;
-            float spriteLocalY = (worldPoint.y - renderer.transform.position.y) / scale.y;
-            Vector2 localPos = new(spriteLocalX, spriteLocalY);
-
-            Quaternion spriteRotation = renderer.transform.rotation;
-            localPos = Quaternion.Inverse(spriteRotation) * localPos;
+            Vector2 localPos = renderer.transform.InverseTransformPoint(worldPoint);
+            localPos /= renderer.bounds.size;
             localPos += new Vector2(.5f, .5f);
-
             return new Vector2Int((int)(localPos.x * renderer.sprite.rect.width), (int)(localPos.y * renderer.sprite.rect.height));
         }
 
+        /// <summary>
+        /// Converts a point in sprite's local space to world space
+        /// </summary>
+        /// <param name="renderer">The sprite renderer whose sprite is to be considered</param>
+        /// <param name="localPoint">A point in sprite's local space</param>
+        /// <returns>A point in world space</returns>
         public static Vector2 SpriteLocalToWorld(this SpriteRenderer renderer, Vector2 localPoint)
         {
             Vector2 spriteSize = new(renderer.sprite.rect.width, renderer.sprite.rect.height);
             Vector2 p = localPoint / spriteSize;
-
             p -= new Vector2(.5f, .5f);
-            p = renderer.transform.rotation * p;
-
-            p.x *=renderer.transform.localScale.x;
-            p.y *=renderer.transform.localScale.y;
-            p.x += renderer.transform.position.x;
-            p.y += renderer.transform.position.y;
-            return p;
+            p *= renderer.bounds.size;
+            return renderer.transform.TransformPoint(p);
         }
 
+        /// <summary>
+        /// Test if a line intersects the sprite renderer
+        /// </summary>
+        /// <param name="renderer">The sprite renderer whose sprite is to be considered</param>
+        /// <param name="p0">Line's start point in world coordinates</param>
+        /// <param name="p1">Line's end point in world coordinates</param>
+        /// <param name="hitPoint0">Point of intersection in world coordinates (for 1st edge hit)</param>
+        /// <param name="hitPoint1">Point of intersection in world coordinates (for 2nd edge hit)</param>
+        /// <returns>number of edges the line intersects (0, 1 or 2)</returns>
         public static uint IntersectLine(this SpriteRenderer renderer, Vector2 p0, Vector2 p1, out Vector2 hitPoint0, out Vector2 hitPoint1)
         {
             hitPoint0 = Vector2.zero;
@@ -104,6 +133,15 @@ namespace WinterCrestal.SpriteCutter
             return 0;
         }
 
+        /// <summary>
+        /// Cuts the attached sprite's texture into 2 separate sprites and creates a new GameObject for each
+        /// </summary>
+        /// <param name="spriteRenderer">The sprite renderer whose sprite to cut</param>
+        /// <param name="point0">A point on the texture's edge in sprite local space</param>
+        /// <param name="point1">A point on the texture's edge in sprite local space</param>
+        /// <param name="s0">1st part of the cut sprite if successful, else null</param>
+        /// <param name="s1">2nd part of the cut sprite if successful, else null</param>
+        /// <returns>true if the cut was successful or valid, else false</returns>
         public static bool CutSprite(this SpriteRenderer spriteRenderer, Vector2Int point0, Vector2Int point1, out SpriteRenderer s0, out SpriteRenderer s1)
         {
             var texture = spriteRenderer.sprite.texture;
@@ -121,7 +159,6 @@ namespace WinterCrestal.SpriteCutter
                     if (cutInfo.xMin == 0 && cutInfo.yMin == 0) b = true;
                     else if (cutInfo.xMin == 0 && cutInfo.yMax == texture.height) b = m >= 1;
                     else if (cutInfo.xMax == texture.width && cutInfo.yMin == 0) b = m < 1;
-                    else if (cutInfo.xMax == texture.width && cutInfo.yMax == texture.height) b = false;
 
                     Vector2Int offset = new(cutInfo.xMin, cutInfo.yMin);
                     CutInfo tempCutInfo = new(cutInfo.p0 - offset, cutInfo.p1 - offset, tex1.width, tex1.height);
@@ -151,6 +188,15 @@ namespace WinterCrestal.SpriteCutter
 
         #region PRIVATE_FUNCTIONS
 
+        /// <summary>
+        /// Line-Line intersection test
+        /// </summary>
+        /// <param name="A">Start point of 1st line</param>
+        /// <param name="B">End point of 1st line</param>
+        /// <param name="C">Start point of 2nd line</param>
+        /// <param name="D">End point of 2nd line</param>
+        /// <param name="hit">Intersection point of the 2 lines</param>
+        /// <returns>true if lines intersect else false</returns>
         private static bool GetLineLineIntersection(Vector2 A, Vector2 B, Vector2 C, Vector2 D, out Vector2 hit)
         {
             hit = Vector2.zero;
@@ -169,6 +215,14 @@ namespace WinterCrestal.SpriteCutter
             return false;
         }
 
+        /// <summary>
+        /// Divides a texture2D into 2 texture2D copies
+        /// </summary>
+        /// <param name="tex2D">Texture to split/divide</param>
+        /// <param name="cutInfo">Relevant information about the cut</param>
+        /// <param name="newTex2D0">1st slice of the divided texture</param>
+        /// <param name="newTex2D1">2nd slice of the divided texture</param>
+        /// <returns></returns>
         private static bool DivideTexture(this Texture2D tex2D, CutInfo cutInfo, out Texture2D newTex2D0, out Texture2D newTex2D1)
         {
             newTex2D0 = null;
@@ -213,6 +267,13 @@ namespace WinterCrestal.SpriteCutter
             return true;
         }
 
+        /// <summary>
+        /// Clears out the color from the side of the line/cut
+        /// </summary>
+        /// <param name="tex2D">Texture to clear out the pixel colors</param>
+        /// <param name="cutInfo">Relevant information about the cut</param>
+        /// <param name="inverted">Whether to switch the side to clear the colors</param>
+        /// <param name="pixelDifferenceTolerance">Difference in x and y position of the cut points before processing further (useful for horizontal and vertical cuts)</param>
         private static void CutTexture(this Texture2D tex2D, CutInfo cutInfo, bool inverted = false, int pixelDifferenceTolerance = 1)
         {
             int diffY = cutInfo.p1.y - cutInfo.p0.y;
@@ -284,6 +345,12 @@ namespace WinterCrestal.SpriteCutter
             tex2D.Apply(true, true);
         }
 
+        /// <summary>
+        /// Creates a new GameObject and attaches all the required components for the given texture
+        /// </summary>
+        /// <param name="tex2D">The texture for which the sprite and GameObject is created</param>
+        /// <param name="ppu">The pixels per unit for the sprite</param>
+        /// <returns>The attached SpriteRenderer of the created GameObject</returns>
         private static SpriteRenderer CreateSpriteRenderer(this Texture2D tex2D, float ppu = 100f)
         {
             GameObject go = new GameObject();

@@ -8,14 +8,6 @@ using ISTouch = UnityEngine.InputSystem.EnhancedTouch.Touch;
 
 namespace WinterCrestal.SpriteCutter
 {
-    public struct SplitSprite
-    {
-        public SpriteRenderer SpriteRenderer;
-        public Rect Rect;
-        public SplitSprite(SpriteRenderer spriteRenderer, Rect rect)
-        { SpriteRenderer = spriteRenderer; Rect = rect; }
-    }
-
     public class SpriteCutterInputManager : MonoBehaviour
     {
         [HideInInspector] public SpriteRenderer[] SpriteRenderersToCut;
@@ -51,7 +43,7 @@ namespace WinterCrestal.SpriteCutter
 
         private void Update()
         {
-#if ENABLE_LEGACY_INPUT_MANAGER && false
+#if ENABLE_LEGACY_INPUT_MANAGER
             if (Input.touchSupported)
             {
                 if (Input.touchCount > 0)
@@ -111,25 +103,32 @@ namespace WinterCrestal.SpriteCutter
 
             if (SpriteRenderersToCut == null || SpriteRenderersToCut.Length == 0) return;
 
-            foreach(var renderer in SpriteRenderersToCut)
+            _p1 = Camera.ScreenToWorldPoint(inputPosition);
+            foreach (var renderer in SpriteRenderersToCut)
             {
                 var hitCount = renderer.IntersectLine(_p0, _p1, out var hit0, out var hit1);
                 if (hitCount == 2)
-                {
+                {   
+                    Debug.DrawLine(hit0, hit1, Color.yellow, 3f);
+
                     var cut0 = renderer.WorldToSpriteLocal(hit0);
                     var cut1 = renderer.WorldToSpriteLocal(hit1);
 
-                    cut0 = CheckCutTolerance(renderer, cut0, _spriteCuttingTolerance);
-                    cut1 = CheckCutTolerance(renderer, cut1, _spriteCuttingTolerance);
-
                     if (renderer.CutSprite(cut0, cut1, out var _cutSpriteRenderer0, out var _cutSpriteRenderer1))
                     {
-                        float xMin = Mathf.Min(cut0.x, cut1.x);
-                        float yMin = Mathf.Min(cut0.y, cut1.y);
-
-                        onSpriteRendererCut?.Invoke(renderer, 
-                            new(_cutSpriteRenderer0, new Rect(0, 0, _cutSpriteRenderer0.sprite.texture.width, _cutSpriteRenderer0.sprite.texture.height)), 
-                            new(_cutSpriteRenderer1, new Rect(xMin, yMin, _cutSpriteRenderer1.sprite.texture.width, _cutSpriteRenderer1.sprite.texture.height)));
+                        CutInfo cutInfo = new (cut0, cut1, renderer.sprite.texture.width, renderer.sprite.texture.height);
+                        if(cutInfo.isCorner)
+                        {
+                            onSpriteRendererCut?.Invoke(renderer,
+                            new(_cutSpriteRenderer0, new Rect(cutInfo.xMin, cutInfo.yMin, _cutSpriteRenderer0.sprite.texture.width, _cutSpriteRenderer0.sprite.texture.height)),
+                            new(_cutSpriteRenderer1, new Rect(0, 0, _cutSpriteRenderer1.sprite.texture.width, _cutSpriteRenderer1.sprite.texture.height)));
+                        }
+                        else
+                        {
+                            onSpriteRendererCut?.Invoke(renderer,
+                            new(_cutSpriteRenderer0, new Rect(0, 0, _cutSpriteRenderer0.sprite.texture.width, _cutSpriteRenderer0.sprite.texture.height)),
+                            new(_cutSpriteRenderer1, new Rect(cutInfo.xMin, cutInfo.yMin, _cutSpriteRenderer1.sprite.texture.width, _cutSpriteRenderer1.sprite.texture.height)));
+                        }
                     }
                 }
             } 
@@ -141,22 +140,6 @@ namespace WinterCrestal.SpriteCutter
 
             _p1 = Camera.ScreenToWorldPoint(inputPosition);
         }
-
-        private Vector2Int CheckCutTolerance(SpriteRenderer renderer, Vector2Int cut, float tolerance)
-        {
-            int px = (int)(renderer.sprite.rect.width * tolerance);
-            int py = (int)(renderer.sprite.rect.height * tolerance);
-            Vector2Int size = new((int)renderer.sprite.rect.width, (int)renderer.sprite.rect.height);
-            var diff = cut - size;
-            diff.x = Mathf.Abs(diff.x);
-            diff.y = Mathf.Abs(diff.y);
-            if (diff.x < px) cut.x = size.x;
-            else if (cut.x < px) cut.x = 0;
-            if (diff.y < py) cut.y = size.y;
-            else if (cut.y < py) cut.y = 0;
-            return cut;
-        }
-
     }
 
 }
