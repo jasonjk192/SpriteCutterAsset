@@ -20,9 +20,17 @@ While most features are implemented, there are still some persisting issues/bugs
 - The most obvious limitation regarding 2D sprite splitting is convex shape splitting since these shapes don't always necessarily resolve to 2 sperate slices
 - This asset always generate 2 slices no matter the shape
 - This asset does not check for empty textures or sprites of very small area or dimensions (May add a feature to correct this in the future)
+- Does not currently work on sprites that are part of a spritesheet (may also be fixed at a later point)
 - Technically not a limitation but this asset depends on Unity's PolyCollider2D for the split sprites which can easily cause performance issues if too many split sprites are present in the scene
 
 ## Changelog:
+v0.3
+- Cut sprites should take the original's filter mode now
+- Fixes to cutting when sprite is rotated and scaled
+- Simple texture transparency check (requires readable texture) and parameters for CutSprite() for transparency check
+- Several utility functions (might be removed at a later point)
+- CC0 textures/sprites for demo scenes
+
 v0.2.5
 - Minor fix to coordinate conversion
 - Added comments to SpriteCutterUtils
@@ -36,4 +44,8 @@ v0.2
 v0.1
 - Currently a WIP that still has a lot of room for improvement
 - It works but sometimes does not properly detect or incorrectly cuts the sprites
-- Will most likely shift the processing of textures to a native plugin
+- Will most likely shift the processing of textures to a native plugin (at a later point)
+
+### Credits:
+- Fruits by Master484 (http://m484games.ucoz.com/)
+- https://openclipart.org/

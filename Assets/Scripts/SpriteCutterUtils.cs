@@ -1,5 +1,6 @@
-using System.Collections.Generic;
+using Unity.Collections;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace WinterCrestal.SpriteCutter
 {
@@ -75,7 +76,7 @@ namespace WinterCrestal.SpriteCutter
         public static Vector2Int WorldToSpriteLocal(this SpriteRenderer renderer, Vector2 worldPoint)
         {
             Vector2 localPos = renderer.transform.InverseTransformPoint(worldPoint);
-            localPos /= renderer.bounds.size;
+            localPos /= renderer.localBounds.size;
             localPos += new Vector2(.5f, .5f);
             return new Vector2Int((int)(localPos.x * renderer.sprite.rect.width), (int)(localPos.y * renderer.sprite.rect.height));
         }
@@ -91,7 +92,7 @@ namespace WinterCrestal.SpriteCutter
             Vector2 spriteSize = new(renderer.sprite.rect.width, renderer.sprite.rect.height);
             Vector2 p = localPoint / spriteSize;
             p -= new Vector2(.5f, .5f);
-            p *= renderer.bounds.size;
+            p *= renderer.localBounds.size;
             return renderer.transform.TransformPoint(p);
         }
 
@@ -109,8 +110,6 @@ namespace WinterCrestal.SpriteCutter
             hitPoint0 = Vector2.zero;
             hitPoint1 = Vector2.zero;
             var bounds = renderer.localBounds;
-            var offset = renderer.transform.position;
-            var rotation = renderer.transform.rotation;
 
             Vector3[] corners = new Vector3[4];
             corners[0] = new(bounds.center.x - bounds.extents.x, bounds.center.y - bounds.extents.y);
@@ -118,7 +117,9 @@ namespace WinterCrestal.SpriteCutter
             corners[2] = new(bounds.center.x + bounds.extents.x, bounds.center.y + bounds.extents.y);
             corners[3] = new(bounds.center.x + bounds.extents.x, bounds.center.y - bounds.extents.y);
 
-            for (int i = 0; i < 4; i++) corners[i] = bounds.center + rotation * (corners[i] - bounds.center) + offset;
+            for (int i = 0; i < 4; i++) corners[i] = renderer.transform.TransformPoint((corners[i] - bounds.center));
+
+            //for (int i = 0; i < 4; i++) corners[i] = bounds.center + rotation * (corners[i] - bounds.center) + offset;
 
             for (int i = 0; i < 4; i++)
             {
@@ -142,13 +143,22 @@ namespace WinterCrestal.SpriteCutter
         /// <param name="s0">1st part of the cut sprite if successful, else null</param>
         /// <param name="s1">2nd part of the cut sprite if successful, else null</param>
         /// <returns>true if the cut was successful or valid, else false</returns>
-        public static bool CutSprite(this SpriteRenderer spriteRenderer, Vector2Int point0, Vector2Int point1, out SpriteRenderer s0, out SpriteRenderer s1)
+        public static bool CutSprite(this SpriteRenderer spriteRenderer, Vector2Int point0, Vector2Int point1, out SpriteRenderer s0, out SpriteRenderer s1, bool checkEmptyTexture = true, byte alphaThreshold = 0)
         {
+            s0 = null; s1 = null;
+
             var texture = spriteRenderer.sprite.texture;
             CutInfo cutInfo = new(point0, point1, texture.width, texture.height);
 
-            if (DivideTexture(texture, cutInfo, out var tex0, out var tex1))
+            if (texture.DivideTexture(cutInfo, out var tex0, out var tex1))
             {
+                bool isTex0Empty = false, isTex1Empty = false;
+                if(checkEmptyTexture)
+                {
+                    isTex0Empty = tex0.IsEmpty(alphaThreshold);
+                    isTex1Empty = tex1.IsEmpty(alphaThreshold);
+                }
+
                 if (cutInfo.isCorner)
                 {
                     int diffY = cutInfo.p1.y - cutInfo.p0.y;
@@ -160,29 +170,58 @@ namespace WinterCrestal.SpriteCutter
                     else if (cutInfo.xMin == 0 && cutInfo.yMax == texture.height) b = m >= 1;
                     else if (cutInfo.xMax == texture.width && cutInfo.yMin == 0) b = m < 1;
 
-                    Vector2Int offset = new(cutInfo.xMin, cutInfo.yMin);
-                    CutInfo tempCutInfo = new(cutInfo.p0 - offset, cutInfo.p1 - offset, tex1.width, tex1.height);
-                    CutTexture(tex0, tempCutInfo, !b);
-                    CutTexture(tex1, cutInfo, b);
+                    if(!isTex0Empty)
+                    {
+                        Vector2Int offset = new(cutInfo.xMin, cutInfo.yMin);
+                        CutInfo tempCutInfo = new(cutInfo.p0 - offset, cutInfo.p1 - offset, tex1.width, tex1.height);
+                        tex0.CutTexture(tempCutInfo, !b);
+                    }
+                    if(!isTex1Empty)
+                        tex1.CutTexture(cutInfo, b);
                 }
                 else
                 {
-                    CutTexture(tex0, cutInfo, false);
-                    Vector2Int offset = new(cutInfo.xMin, cutInfo.yMin);
-                    CutInfo tempCutInfo = new(cutInfo.p0 - offset, cutInfo.p1 - offset, tex1.width, tex1.height);
-                    CutTexture(tex1, tempCutInfo, true);
+                    if(!isTex0Empty)
+                        tex0.CutTexture(cutInfo, false);
+                    if(!isTex1Empty)
+                    {
+                        Vector2Int offset = new(cutInfo.xMin, cutInfo.yMin);
+                        CutInfo tempCutInfo = new(cutInfo.p0 - offset, cutInfo.p1 - offset, tex1.width, tex1.height);
+                        tex1.CutTexture(tempCutInfo, true);
+                    }
                 }
 
-                s0 = CreateSpriteRenderer(tex0, spriteRenderer.sprite.pixelsPerUnit);
-                s1 = CreateSpriteRenderer(tex1, spriteRenderer.sprite.pixelsPerUnit);
+                if(!isTex0Empty) s0 = tex0.CreateSpriteRenderer(spriteRenderer.sprite.pixelsPerUnit);
+                if(!isTex1Empty) s1 = tex1.CreateSpriteRenderer(spriteRenderer.sprite.pixelsPerUnit);
+
                 return true;
             }
 
-            s0 = null;
-            s1 = null;
             return false;
         }
 
+        /// <summary>
+        /// Checks if the texture contains no pixels whose transparency is greater than the threshold (in Color32)
+        /// </summary>
+        /// <param name="tex2D">The texture to check</param>
+        /// <param name="alphaThreshold">Threshold to consider if the pixel is empty or not (Default: 0)</param>
+        /// <returns>true if empty else false</returns>
+        public static bool IsEmpty(this Texture2D tex2D, byte alphaThreshold = 0)
+        {
+            var pixels = tex2D.GetPixelData<Color32>(0);
+
+            for (int y = 0; y < tex2D.height; y++)
+            {
+                for(int x = 0; x < tex2D.width; x++)
+                {
+                    int index = y * tex2D.width + x;
+                    if (pixels[index].a > alphaThreshold)
+                        return false;
+                }
+            }
+
+            return true;
+        }
 
         #endregion
 
@@ -258,12 +297,18 @@ namespace WinterCrestal.SpriteCutter
             }
             else
             {
+                //if(!(xMin == 0 && xMax == tex2D.width) || !(yMin == 0 && yMax == tex2D.height)) return false;
+
                 newTex2D0 = new Texture2D(xMax, yMax, tex2D.format, false);
                 newTex2D1 = new Texture2D(tex2D.width - xMin, tex2D.height - yMin, tex2D.format, false);
 
                 Graphics.CopyTexture(tex2D, 0, 0, 0, 0, newTex2D0.width, newTex2D0.height, newTex2D0, 0, 0, 0, 0);
                 Graphics.CopyTexture(tex2D, 0, 0, xMin, yMin, newTex2D1.width, newTex2D1.height, newTex2D1, 0, 0, 0, 0);
             }
+
+            newTex2D0.filterMode = tex2D.filterMode;
+            newTex2D1.filterMode = tex2D.filterMode;
+
             return true;
         }
 
@@ -274,7 +319,8 @@ namespace WinterCrestal.SpriteCutter
         /// <param name="cutInfo">Relevant information about the cut</param>
         /// <param name="inverted">Whether to switch the side to clear the colors</param>
         /// <param name="pixelDifferenceTolerance">Difference in x and y position of the cut points before processing further (useful for horizontal and vertical cuts)</param>
-        private static void CutTexture(this Texture2D tex2D, CutInfo cutInfo, bool inverted = false, int pixelDifferenceTolerance = 1)
+        /// <param name="makeNoLongerReadable">Whether the texture should be made unreadable after finishing the cut</param>
+        private static void CutTexture(this Texture2D tex2D, CutInfo cutInfo, bool inverted = false, int pixelDifferenceTolerance = 1, bool makeNoLongerReadable = true)
         {
             int diffY = cutInfo.p1.y - cutInfo.p0.y;
             int diffX = cutInfo.p1.x - cutInfo.p0.x;
@@ -342,7 +388,7 @@ namespace WinterCrestal.SpriteCutter
             }
 
             tex2D.SetPixelData(pixels, 0);
-            tex2D.Apply(true, true);
+            tex2D.Apply(true, makeNoLongerReadable);
         }
 
         /// <summary>
@@ -356,9 +402,115 @@ namespace WinterCrestal.SpriteCutter
             GameObject go = new GameObject();
             var renderer = go.AddComponent<SpriteRenderer>();
             renderer.sprite = Sprite.Create(tex2D, new Rect(0, 0, tex2D.width, tex2D.height), new Vector2(.5f, .5f), ppu);
+            
             return renderer;
         }
 
         #endregion
+    }
+
+    public static class Texture2DUtils
+    {
+        public enum SaveTextureFileFormat { EXR, JPG, PNG, TGA };
+
+        /// <summary>
+        /// Fast save texture to file
+        /// Credits: https://forum.unity.com/threads/save-rendertexture-or-texture2d-as-image-file-utility.1325130/#post-8387577
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="filePath"></param>
+        /// <param name="width"></param>
+        /// <param name="height"></param>
+        /// <param name="fileFormat"></param>
+        /// <param name="jpgQuality"></param>
+        /// <param name="asynchronous"></param>
+        /// <param name="done"></param>
+        static public void SaveTextureToFile(Texture source,
+                                         string filePath,
+                                         int width,
+                                         int height,
+                                         SaveTextureFileFormat fileFormat = SaveTextureFileFormat.PNG,
+                                         int jpgQuality = 95,
+                                         bool asynchronous = true,
+                                         System.Action<bool> done = null)
+        {
+            // check that the input we're getting is something we can handle:
+            if (!(source is Texture2D || source is RenderTexture))
+            {
+                done?.Invoke(false);
+                return;
+            }
+
+            // use the original texture size in case the input is negative:
+            if (width < 0 || height < 0)
+            {
+                width = source.width;
+                height = source.height;
+            }
+
+            // resize the original image:
+            var resizeRT = RenderTexture.GetTemporary(width, height, 0);
+            Graphics.Blit(source, resizeRT);
+
+            // create a native array to receive data from the GPU:
+            var narray = new NativeArray<byte>(width * height * 4, Allocator.Persistent, NativeArrayOptions.UninitializedMemory);
+
+            // request the texture data back from the GPU:
+            var request = AsyncGPUReadback.RequestIntoNativeArray(ref narray, resizeRT, 0, (AsyncGPUReadbackRequest request) =>
+            {
+                // if the readback was successful, encode and write the results to disk
+                if (!request.hasError)
+                {
+                    NativeArray<byte> encoded;
+
+                    switch (fileFormat)
+                    {
+                        case SaveTextureFileFormat.EXR:
+                            encoded = ImageConversion.EncodeNativeArrayToEXR(narray, resizeRT.graphicsFormat, (uint)width, (uint)height);
+                            break;
+                        case SaveTextureFileFormat.JPG:
+                            encoded = ImageConversion.EncodeNativeArrayToJPG(narray, resizeRT.graphicsFormat, (uint)width, (uint)height, 0, jpgQuality);
+                            break;
+                        case SaveTextureFileFormat.TGA:
+                            encoded = ImageConversion.EncodeNativeArrayToTGA(narray, resizeRT.graphicsFormat, (uint)width, (uint)height);
+                            break;
+                        default:
+                            encoded = ImageConversion.EncodeNativeArrayToPNG(narray, resizeRT.graphicsFormat, (uint)width, (uint)height);
+                            break;
+                    }
+
+                    System.IO.File.WriteAllBytes(filePath, encoded.ToArray());
+                    encoded.Dispose();
+                }
+
+                narray.Dispose();
+
+                // notify the user that the operation is done, and its outcome.
+                done?.Invoke(!request.hasError);
+            });
+
+            if (!asynchronous)
+                request.WaitForCompletion();
+        }
+
+        public static void SaveToFIle(this Texture2D tex2D, 
+                                        string filePath, 
+                                        SaveTextureFileFormat fileFormat = SaveTextureFileFormat.PNG, 
+                                        int jpgQuality = 95,
+                                        bool asynchronous = true,
+                                        System.Action<bool> done = null)
+        {
+            SaveTextureToFile(tex2D, filePath, tex2D.width, tex2D.height, fileFormat, jpgQuality, asynchronous, done);
+        }
+
+        public static void DebugInfo(this Texture2D tex2D)
+        {
+            System.Text.StringBuilder s = new("Dimensions: " + tex2D.width + " x " + tex2D.height + "\n");
+            s.AppendLine("Format: " + tex2D.format.ToString());
+            s.AppendLine("isDataSRGB: " + tex2D.isDataSRGB);
+            s.AppendLine("FilterMode: " + tex2D.filterMode);
+            s.AppendLine("mipmapCount: " + tex2D.mipmapCount);
+            Debug.Log(s.ToString());
+        }
     }
 }

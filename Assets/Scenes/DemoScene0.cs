@@ -29,8 +29,10 @@ namespace WinterCrestal.SpriteCutter
 
         private Camera _camera;
 
-        private void Awake()
+        protected override void Awake()
         {
+            base.Awake();
+
             _lineRenderer = GetComponent<LineRenderer>();
             _lineRenderer.enabled = false;
 
@@ -297,8 +299,10 @@ namespace WinterCrestal.SpriteCutter
             if (_splitSprite0.SpriteRenderer != null) { Destroy(_splitSprite0.SpriteRenderer.gameObject); _splitSprite0.SpriteRenderer = null; _splitSprite0.Rect = default; }
             if (_splitSprite1.SpriteRenderer != null) { Destroy(_splitSprite1.SpriteRenderer.gameObject); _splitSprite1.SpriteRenderer = null; _splitSprite1.Rect = default; }
 
+            Debug.DrawLine(_testSpriteRenderer.SpriteLocalToWorld(p1), _testSpriteRenderer.SpriteLocalToWorld(p2), Color.magenta, 3f);
 
-            if (_testSpriteRenderer.CutSprite(p1, p2, out _splitSprite0.SpriteRenderer, out _splitSprite1.SpriteRenderer))
+
+            if (_testSpriteRenderer.CutSprite(p1, p2, out _splitSprite0.SpriteRenderer, out _splitSprite1.SpriteRenderer, false))
             {
                 _splitSprite0.Rect = new(0, 0, _splitSprite0.SpriteRenderer.sprite.texture.width, _splitSprite0.SpriteRenderer.sprite.texture.height);
                 _splitSprite1.Rect = new(p1.x < p2.x ? p1.x : p2.x, p1.y < p2.y ? p1.y : p2.y, _splitSprite1.SpriteRenderer.sprite.texture.width, _splitSprite1.SpriteRenderer.sprite.texture.height);
@@ -358,7 +362,8 @@ namespace WinterCrestal.SpriteCutter
             if (_testSpriteRenderer != null)
             {
                 Gizmos.color = Color.yellow;
-                DrawBounds(_testSpriteRenderer.localBounds, _testSpriteRenderer.transform.position, _testSpriteRenderer.transform.rotation);
+                DrawBounds(_testSpriteRenderer.bounds, _testSpriteRenderer.transform);
+                //DrawBounds(_testSpriteRenderer.localBounds, _testSpriteRenderer.transform.position, _testSpriteRenderer.transform.rotation);
                 Gizmos.color = Color.red;
                 DrawBounds(_testSpriteRenderer.bounds, Vector3.zero, Quaternion.identity);
                 Gizmos.color = Color.cyan;
@@ -377,6 +382,24 @@ namespace WinterCrestal.SpriteCutter
             lt = bounds.center + rotation * (lt - bounds.center) + offset;
             rd = bounds.center + rotation * (rd - bounds.center) + offset;
             rt = bounds.center + rotation * (rt - bounds.center) + offset;
+
+            Gizmos.DrawLine(ld, lt);
+            Gizmos.DrawLine(lt, rt);
+            Gizmos.DrawLine(rt, rd);
+            Gizmos.DrawLine(rd, ld);
+        }
+
+        private void DrawBounds(Bounds bounds, Transform transform)
+        {
+            Vector3 ld = new(bounds.center.x - bounds.extents.x, bounds.center.y - bounds.extents.y);
+            Vector3 lt = new(bounds.center.x - bounds.extents.x, bounds.center.y + bounds.extents.y);
+            Vector3 rd = new(bounds.center.x + bounds.extents.x, bounds.center.y - bounds.extents.y);
+            Vector3 rt = new(bounds.center.x + bounds.extents.x, bounds.center.y + bounds.extents.y);
+
+            ld = transform.TransformPoint((ld - bounds.center) * .5f);
+            lt = transform.TransformPoint((lt - bounds.center) * .5f);
+            rd = transform.TransformPoint((rd - bounds.center) * .5f);
+            rt = transform.TransformPoint((rt - bounds.center) * .5f);
 
             Gizmos.DrawLine(ld, lt);
             Gizmos.DrawLine(lt, rt);

@@ -114,7 +114,7 @@ namespace WinterCrestal.SpriteCutter
                     var cut0 = renderer.WorldToSpriteLocal(hit0);
                     var cut1 = renderer.WorldToSpriteLocal(hit1);
 
-                    if (renderer.CutSprite(cut0, cut1, out var _cutSpriteRenderer0, out var _cutSpriteRenderer1))
+                    if (renderer.CutSprite(cut0, cut1, out var _cutSpriteRenderer0, out var _cutSpriteRenderer1, false))
                     {
                         CutInfo cutInfo = new (cut0, cut1, renderer.sprite.texture.width, renderer.sprite.texture.height);
                         if(cutInfo.isCorner)

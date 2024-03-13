@@ -9,6 +9,10 @@ namespace WinterCrestal.SpriteCutter
 
         [SerializeField] private SpriteCutterInputManager _spriteCutterInputManager;
 
+        [Space, Header("Saving")]
+        public SpriteRenderer SpriteToSave;
+        public string SpriteToSaveName;
+
         private void Awake()
         {
             _camera = Camera.main;
@@ -84,6 +88,20 @@ namespace WinterCrestal.SpriteCutter
         {
             Vector2 worldPos = Camera.main.ScreenToWorldPoint(position);
             _lineRenderer.SetPosition(1, worldPos);
+        }
+
+        private void SaveSprite()
+        {
+            if (SpriteToSave == null) return;
+
+            SpriteToSave.sprite.texture.SaveToFIle("Saved/" + SpriteToSaveName + ".png");
+        }
+
+        private void OnGUI()
+        {
+            GUILayout.BeginVertical();
+            if (GUILayout.Button("Save")) SaveSprite();
+            GUILayout.EndVertical();
         }
 
     }
